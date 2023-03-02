@@ -23,6 +23,11 @@ namespace Boilerplate.Infrastructure.Data.Configurations
         }
     }
 
+    public class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
+    {
+        public void Configure(EntityTypeBuilder<UserRole> builder) => builder.ToTable("UserRole");
+    }
+
     public class UserClaimConfiguration : IEntityTypeConfiguration<IdentityUserClaim<long>>
     {
         public void Configure(EntityTypeBuilder<IdentityUserClaim<long>> builder) => builder.ToTable("UserClaim");
@@ -36,5 +41,10 @@ namespace Boilerplate.Infrastructure.Data.Configurations
     public class UserTokenConfiguration : IEntityTypeConfiguration<IdentityUserToken<long>>
     {
         public void Configure(EntityTypeBuilder<IdentityUserToken<long>> builder) => builder.ToTable("UserToken");
+    }
+
+    public class UserSessionConfiguration : IEntityTypeConfiguration<UserSession>
+    {
+        public void Configure(EntityTypeBuilder<UserSession> builder) => builder.ToTable("UserSession");
     }
 }

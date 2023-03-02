@@ -1,4 +1,7 @@
-﻿using Boilerplate.Core.Entities;
+﻿using Boilerplate.Core;
+using Boilerplate.Core.Entities;
+using Boilerplate.Core.Utilities;
+using Boilerplate.Infrastructure.Data.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +30,8 @@ namespace Boilerplate.Infrastructure.Data
         {
             base.OnModelCreating(builder);
 
-            builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+            builder.ApplyEntitiesFromAssembly(Application.Assemblies.Core);
+            builder.ApplyConfigurationsFromAssembly(Application.Assemblies.Infrastructure);
         }
     }
 }

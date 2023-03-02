@@ -26,4 +26,21 @@ namespace Boilerplate.Core.Entities
 
         public virtual Role Role { get; set; } = default!;
     }
+
+    public class UserSession
+    {
+        public virtual User User { get; set; } = default!;
+
+        public long UserId { get; set; }
+
+        public long Id { get; set; }
+
+        public string RefreshTokenHash { get; set; } = default!;
+
+        public string AccessTokenHash { get; set; } = default!;
+
+        public DateTimeOffset AccessTokenExpiresAt { get; set; }
+
+        public DateTimeOffset RefreshTokenExpiresAt { get; set; }
+    }
 }

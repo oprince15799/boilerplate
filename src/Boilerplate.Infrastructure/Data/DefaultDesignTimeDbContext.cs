@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Boilerplate.Core.Utilities;
+using Boilerplate.Core;
 
 namespace Boilerplate.Infrastructure.Data
 {
@@ -47,7 +49,7 @@ namespace Boilerplate.Infrastructure.Data
             // Get connection string
             var optionsBuilder = new DbContextOptionsBuilder<DefaultDbContext>();
             var connectionString = configuration.GetConnectionString("Default");
-            optionsBuilder.UseSqlServer(connectionString, b => b.MigrationsAssembly(typeof(DefaultDbContext).Assembly.FullName));
+            optionsBuilder.UseSqlServer(connectionString, b => b.MigrationsAssembly(Application.Assemblies.Infrastructure.FullName));
             return new DefaultDbContext(optionsBuilder.Options);
         }
     }

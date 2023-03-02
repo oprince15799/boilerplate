@@ -19,4 +19,13 @@ namespace Boilerplate.Core.Entities
 
         public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     }
+
+    public static class RoleNames
+    {
+        public static string Admin => nameof(Admin);
+
+        public static string Memeber => nameof(Memeber);
+
+        public static IEnumerable<string> All => new string[] { Admin, Memeber };
+    }
 }
