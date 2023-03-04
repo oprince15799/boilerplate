@@ -14,6 +14,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Boilerplate.Core.Services\Boilerplate.Core.Services.csproj" />
+    <ProjectReference Include="..\Boilerplate.Core.Templates\Boilerplate.Core.Templates.csproj" />
+    <ProjectReference Include="..\Boilerplate.Core\Boilerplate.Core.csproj" />
     <ProjectReference Include="..\Boilerplate.Infrastructure\Boilerplate.Infrastructure.csproj" />
   </ItemGroup>
 

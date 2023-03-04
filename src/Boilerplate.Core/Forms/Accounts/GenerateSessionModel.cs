@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using Boilerplate.Core.Abstractions.Identity;
+using Boilerplate.Core.Extensions.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;

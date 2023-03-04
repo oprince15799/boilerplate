@@ -1,4 +1,4 @@
-﻿using Boilerplate.Core.Utilities;
+﻿using Boilerplate.Core.Helpers;
 using DeviceId;
 using System;
 using System.Collections.Generic;

@@ -12,8 +12,22 @@ namespace Boilerplate.Server.Endpoints
             {
                 await accountService.CreateAsync(form);
                 return Results.Ok();
-            })
-            .WithName("CreateAccount");
+
+            }).WithName("CreateAccount");
+
+            endpoints.MapPost("/accounts/username/token/send", async (IAccountService accountService, [FromBody] SendUsernameTokenForm form) =>
+            {
+                await accountService.SendUsernameTokenAsync(form);
+                return Results.Ok();
+
+            }).WithName("SendUsernameToken");
+
+            endpoints.MapPost("/accounts/username/token/verify", async (IAccountService accountService, [FromBody] VerifyUsernameForm form) =>
+            {
+                await accountService.VerifyUsernameAsync(form);
+                return Results.Ok();
+
+            }).WithName("VerifyUsername");
 
             endpoints.MapPost("/accounts/sessions/generate", async (IAccountService accountService, [FromBody] GenerateSessionForm form) =>
             {

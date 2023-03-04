@@ -1,5 +1,5 @@
-﻿using Boilerplate.Core.Abstractions.Domain;
-using Boilerplate.Core.Utilities;
+﻿using Boilerplate.Core.Helpers;
+using Boilerplate.Core.Helpers.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,7 +17,7 @@ namespace Boilerplate.Core.ValueObjects
             if (ValidationHelper.IsEmail(value) && ValidationHelper.TryParseEmail(value, out var email))
             {
                 Value = email.Address;
-                Type = ContactType.Email;
+                Type = ContactType.EmailAddress;
             }
             else if (ValidationHelper.IsPhoneNumber(value) && ValidationHelper.TryParsePhoneNumber(value, out var phoneNumber))
             {
@@ -33,13 +33,13 @@ namespace Boilerplate.Core.ValueObjects
 
         protected override IEnumerable<object> GetEqualityComponents()
         {
-            throw new NotImplementedException();
+            yield return Value;
         }
     }
 
     public enum ContactType
     {
-        Email,
+        EmailAddress,
         PhoneNumber
     }
 }

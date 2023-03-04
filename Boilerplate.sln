@@ -3,13 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33403.182
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Boilerplate.Core", "src\Boilerplate.Core\Boilerplate.Core.csproj", "{48A65025-57DA-4A2A-B875-BD5F8749B019}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Boilerplate.Core", "src\Boilerplate.Core\Boilerplate.Core.csproj", "{48A65025-57DA-4A2A-B875-BD5F8749B019}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{94C97FB6-B0BF-44F0-B1E0-896C29719900}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Boilerplate.Infrastructure", "src\Boilerplate.Infrastructure\Boilerplate.Infrastructure.csproj", "{8F11D25B-71FA-4D54-8E8D-E83B1BD0AA21}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Boilerplate.Infrastructure", "src\Boilerplate.Infrastructure\Boilerplate.Infrastructure.csproj", "{8F11D25B-71FA-4D54-8E8D-E83B1BD0AA21}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Boilerplate.Server", "src\Boilerplate.Server\Boilerplate.Server.csproj", "{3A839C2A-53D5-4BA6-94F8-80D81491F31A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Boilerplate.Server", "src\Boilerplate.Server\Boilerplate.Server.csproj", "{3A839C2A-53D5-4BA6-94F8-80D81491F31A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Boilerplate.Core.Templates", "src\Boilerplate.Core.Templates\Boilerplate.Core.Templates.csproj", "{38312CA8-9F89-46FB-85BE-028D8E65389D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Boilerplate.Core.Services", "src\Boilerplate.Core.Services\Boilerplate.Core.Services.csproj", "{C48B2AED-6780-4E4B-9A29-4839056F093C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,6 +33,14 @@ Global
 		{3A839C2A-53D5-4BA6-94F8-80D81491F31A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3A839C2A-53D5-4BA6-94F8-80D81491F31A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3A839C2A-53D5-4BA6-94F8-80D81491F31A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{38312CA8-9F89-46FB-85BE-028D8E65389D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{38312CA8-9F89-46FB-85BE-028D8E65389D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{38312CA8-9F89-46FB-85BE-028D8E65389D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{38312CA8-9F89-46FB-85BE-028D8E65389D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C48B2AED-6780-4E4B-9A29-4839056F093C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C48B2AED-6780-4E4B-9A29-4839056F093C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C48B2AED-6780-4E4B-9A29-4839056F093C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C48B2AED-6780-4E4B-9A29-4839056F093C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -37,6 +49,8 @@ Global
 		{48A65025-57DA-4A2A-B875-BD5F8749B019} = {94C97FB6-B0BF-44F0-B1E0-896C29719900}
 		{8F11D25B-71FA-4D54-8E8D-E83B1BD0AA21} = {94C97FB6-B0BF-44F0-B1E0-896C29719900}
 		{3A839C2A-53D5-4BA6-94F8-80D81491F31A} = {94C97FB6-B0BF-44F0-B1E0-896C29719900}
+		{38312CA8-9F89-46FB-85BE-028D8E65389D} = {94C97FB6-B0BF-44F0-B1E0-896C29719900}
+		{C48B2AED-6780-4E4B-9A29-4839056F093C} = {94C97FB6-B0BF-44F0-B1E0-896C29719900}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {23C8CDCD-348D-406F-A0F5-02B229797C9F}

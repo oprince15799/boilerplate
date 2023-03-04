@@ -17,6 +17,10 @@ namespace Boilerplate.Core.Entities
         {
         }
 
+        public string FirstName { get; set; } = default!;
+
+        public string LastName { get; set; } = default!;
+
         public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     }
 
@@ -32,7 +36,7 @@ namespace Boilerplate.Core.Entities
         public virtual User User { get; set; } = default!;
 
         public long UserId { get; set; }
-
+        
         public long Id { get; set; }
 
         public string RefreshTokenHash { get; set; } = default!;

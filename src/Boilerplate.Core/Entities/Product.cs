@@ -1,4 +1,4 @@
-﻿using Boilerplate.Core.Abstractions.Domain;
+﻿using Boilerplate.Core.Helpers.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.Linq;

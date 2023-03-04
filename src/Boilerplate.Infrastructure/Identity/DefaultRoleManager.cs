@@ -1,5 +1,5 @@
-﻿using Boilerplate.Core.Abstractions.Identity;
-using Boilerplate.Core.Entities;
+﻿using Boilerplate.Core.Entities;
+using Boilerplate.Core.Extensions.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using System;

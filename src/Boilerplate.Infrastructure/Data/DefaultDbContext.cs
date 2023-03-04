@@ -1,6 +1,5 @@
 ﻿using Boilerplate.Core;
 using Boilerplate.Core.Entities;
-using Boilerplate.Core.Utilities;
 using Boilerplate.Infrastructure.Data.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;

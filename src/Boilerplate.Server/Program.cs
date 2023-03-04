@@ -1,7 +1,5 @@
 using Boilerplate.Core;
-using Boilerplate.Core.Abstractions.Identity;
 using Boilerplate.Core.Entities;
-using Boilerplate.Core.Utilities;
 using Boilerplate.Infrastructure.Data;
 using Boilerplate.Infrastructure.Identity;
 using Boilerplate.Server.Endpoints;
@@ -14,7 +12,6 @@ using System.Reflection;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using System.Text.Json;
-using Boilerplate.Infrastructure.Services;
 using Boilerplate.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -22,6 +19,11 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using Boilerplate.Infrastructure.Identity.Jwt;
+using MailKit.Security;
+using Boilerplate.Infrastructure.Extensions.SmsSender;
+using Boilerplate.Infrastructure.Extensions.EmailSender.Smtp;
+using Boilerplate.Infrastructure.Extensions.ViewRenderer.Razor;
+using Boilerplate.Core.Extensions.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,10 +61,41 @@ builder.Services.AddDbContext<DefaultDbContext>(options =>
 });
 
 // Add Identity services to the container.
+builder.Services.ConfigureOptions<DefaultUserSessionConfiguredOptions>();
+builder.Services.AddIdentity<User, Role>(options => {
+    // Password settings.
+    options.Password.RequireDigit = false;
+    options.Password.RequireLowercase = false;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequiredLength = 0;
+    options.Password.RequiredUniqueChars = 0;
 
-builder.Services.ConfigureOptions<IdentityConfiguredOptions>();
-builder.Services.AddIdentity<User, Role>()
-    .AddEntityFrameworkStores<DefaultDbContext>()
+    // Lockout settings.
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+
+    // User settings.
+    options.User.AllowedUserNameCharacters = string.Empty;
+    options.User.RequireUniqueEmail = false;
+
+    options.SignIn.RequireConfirmedAccount = false;
+    options.SignIn.RequireConfirmedEmail = false;
+    options.SignIn.RequireConfirmedPhoneNumber = false;
+
+    // Generate Short Code for Email Confirmation using Asp.Net Identity core 2.1
+    // source: https://stackoverflow.com/questions/53616142/generate-short-code-for-email-confirmation-using-asp-net-identity-core-2-1
+    options.Tokens.EmailConfirmationTokenProvider = TokenOptions.DefaultEmailProvider;
+    options.Tokens.ChangeEmailTokenProvider = TokenOptions.DefaultEmailProvider;
+    options.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultEmailProvider;
+
+    options.ClaimsIdentity.RoleClaimType = ClaimTypes.Role;
+    options.ClaimsIdentity.UserNameClaimType = ClaimTypes.Name;
+    options.ClaimsIdentity.UserIdClaimType = ClaimTypes.NameIdentifier;
+    options.ClaimsIdentity.EmailClaimType = ClaimTypes.Email;
+    options.ClaimsIdentity.SecurityStampClaimType = ClaimTypes.SerialNumber;
+})
     .AddUserStore<DefaultUserStore>()
     .AddRoleStore<DefaultRoleStore>()
     .AddUserManager<DefaultUserManager>()
@@ -79,7 +112,13 @@ builder.Services.AddAuthentication(options =>
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultSignInScheme = JwtBearerDefaults.AuthenticationScheme;
 })
-             .AddJwtBearer();
+    .AddJwtBearer();
+
+// Add External services to the container.
+
+builder.Services.AddRazorViewRenderer();
+builder.Services.AddSmtpEmailSender(builder.Configuration.GetSection("MailSettings:Smtp"));
+builder.Services.AddSmsSender();
 
 // Add Domain services to the container.
 builder.Services.AddScoped<IAccountService, AccountService>();
@@ -121,6 +160,7 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapErrorEndpoints(); 
 app.MapHomeEndpoints();
 app.MapAccountEndpoints();
 

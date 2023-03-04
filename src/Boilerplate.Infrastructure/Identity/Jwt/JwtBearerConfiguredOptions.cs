@@ -18,11 +18,11 @@ namespace Boilerplate.Infrastructure.Identity.Jwt
 {
     public class JwtBearerConfiguredOptions : IConfigureNamedOptions<JwtBearerOptions>
     {
-        private readonly DefaultIdentityOptions identityOptions;
+        private readonly UserSessionOptions userSessionOptions;
 
-        public JwtBearerConfiguredOptions(IOptions<DefaultIdentityOptions> identityOptionsAccessor)
+        public JwtBearerConfiguredOptions(IOptions<UserSessionOptions> identityOptionsAccessor)
         {
-            identityOptions = identityOptionsAccessor?.Value ?? throw new ArgumentNullException(nameof(identityOptionsAccessor));
+            userSessionOptions = identityOptionsAccessor?.Value ?? throw new ArgumentNullException(nameof(identityOptionsAccessor));
         }
 
         public void Configure(string? name, JwtBearerOptions options)
@@ -32,12 +32,12 @@ namespace Boilerplate.Infrastructure.Identity.Jwt
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
-                ValidateAudience = identityOptions.Session.Issuer != null,
+                ValidateAudience = userSessionOptions.Issuer != null,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = identityOptions.Session.Issuer,
-                ValidAudience = identityOptions.Session.Audience,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(identityOptions.Session.Secret)),
+                ValidIssuer = userSessionOptions.Issuer,
+                ValidAudience = userSessionOptions.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(userSessionOptions.Secret)),
                 ClockSkew = TimeSpan.Zero
             };
             options.Events = new JwtBearerEvents

@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Boilerplate.Core.Utilities;
 using Boilerplate.Core;
 
 namespace Boilerplate.Infrastructure.Data
