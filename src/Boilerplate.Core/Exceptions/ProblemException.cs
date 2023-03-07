@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Net;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,48 +13,52 @@ using System.Threading.Tasks;
 namespace Boilerplate.Core.Exceptions
 {
     [Serializable]
-    public class ValidationException : InvalidOperationException
+    public class ProblemException : InvalidOperationException
     {
         public IDictionary<string, string[]> Errors { get; private set; }
 
         public string Title { get; private set; }
 
-        public ValidationException(string title, IDictionary<string, string[]> errors)
+        public int StatusCode { get; set; } 
+
+        public ProblemException(string title, IDictionary<string, string[]> errors)
         {
             Title = title;
             Errors = errors;
+            StatusCode = 400;
         }
 
-        public ValidationException(string title) 
+        public ProblemException(string title, int statusCode) 
             : this(title, new Dictionary<string, string[]>())
         {
+            StatusCode = statusCode;
         }
 
-        public ValidationException(IDictionary<string, string[]> errors) 
+        public ProblemException(IDictionary<string, string[]> errors) 
             : this("One or more validation errors occurred.", errors)
         {
         }
 
-        public ValidationException(IDictionary<LambdaExpression, string[]> errors) 
+        public ProblemException(IDictionary<LambdaExpression, string[]> errors) 
             : this(BuldErrors(errors))
         {
         }
 
-        public ValidationException((string PropertyName, string Message) error)
+        public ProblemException((string PropertyName, string Message) error)
             : this(new Dictionary<string, string[]> { { error.PropertyName, new string[] { error.Message } } }) { }
 
-        public ValidationException(string title, (string PropertyName, string Message) error)
+        public ProblemException(string title, (string PropertyName, string Message) error)
             : this(title, new Dictionary<string, string[]> { { error.PropertyName, new string[] { error.Message } } }) { }
 
-        public ValidationException((LambdaExpression PropertyName, string Message) error)
+        public ProblemException((LambdaExpression PropertyName, string Message) error)
             : this(BuldErrors(new[] { error })) {}
 
-        public ValidationException(string title, (LambdaExpression PropertyName, string Message) error)
+        public ProblemException(string title, (LambdaExpression PropertyName, string Message) error)
             : this(title, BuldErrors(new[] { error })) { }
 
-        public ValidationException(IEnumerable<ValidationFailure> errors) : this(BuldErrors(errors)) { }
+        public ProblemException(IEnumerable<ValidationFailure> errors) : this(BuldErrors(errors)) { }
 
-        public ValidationException(string title, IEnumerable<ValidationFailure> errors) : this(title, BuldErrors(errors)) { }
+        public ProblemException(string title, IEnumerable<ValidationFailure> errors) : this(title, BuldErrors(errors)) { }
 
         private static IDictionary<string, string[]> BuldErrors(IDictionary<LambdaExpression, string[]> errors)
         {
@@ -70,7 +75,7 @@ namespace Boilerplate.Core.Exceptions
             return errors.GroupBy(_ => _.PropertyName).ToDictionary(_ => _.Key, _ => _.Select(_ => _.ErrorMessage).ToArray());
         }
 
-        public ValidationException(SerializationInfo info, StreamingContext context) : base(info, context)
+        public ProblemException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
             Title = "One or more validation errors occurred.";
             Errors = info.GetValue("errors", typeof(IDictionary<string, string[]>)) as IDictionary<string, string[]> ?? new Dictionary<string, string[]>();

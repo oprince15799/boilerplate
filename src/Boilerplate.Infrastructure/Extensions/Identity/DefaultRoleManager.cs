@@ -1,5 +1,6 @@
 ﻿using Boilerplate.Core.Entities;
 using Boilerplate.Core.Extensions.Identity;
+using Boilerplate.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using System;
@@ -8,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Boilerplate.Infrastructure.Identity
+namespace Boilerplate.Infrastructure.Extensions.Identity
 {
     public class DefaultRoleManager : RoleManager<Role>, IRoleManager
     {

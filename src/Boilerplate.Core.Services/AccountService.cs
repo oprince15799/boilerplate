@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Boilerplate.Core.Entities;
+using Boilerplate.Core.Exceptions;
 using Boilerplate.Core.Extensions.EmailSender;
 using Boilerplate.Core.Extensions.Identity;
 using Boilerplate.Core.Extensions.SmsSender;
@@ -18,7 +19,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
-using ValidationException = Boilerplate.Core.Exceptions.ValidationException;
 
 namespace Boilerplate.Core.Services
 {
@@ -32,7 +32,10 @@ namespace Boilerplate.Core.Services
         private readonly ISmsSender _smsSender;
         private readonly IValidator<CreateAccountForm> _createAccountValidator;
         private readonly IValidator<SendUsernameTokenForm> _sendUsernameTokenValidator;
-        private readonly IValidator<VerifyUsernameForm> _verifyUsernameValidator;
+        private readonly IValidator<ReceiveUsernameTokenForm> _receiveUsernameValidator;
+        private readonly IValidator<SendPasswordTokenForm> _sendPasswordTokenValidator;
+        private readonly IValidator<ReceivePasswordTokenForm> _receivePasswordValidator;
+        private readonly IValidator<ChangePasswordForm> _changePasswordValidator;
         private readonly IValidator<GenerateSessionForm> _generateSessionValidator;
         private readonly IValidator<RefreshSessionForm> _refreshSessionValidator;
         private readonly IValidator<RevokeSessionForm> _revokeSessionValidator;
@@ -54,7 +57,10 @@ namespace Boilerplate.Core.Services
             _smsSender = smsSender ?? throw new ArgumentNullException(nameof(smsSender));
             _createAccountValidator = serviceProvider.GetRequiredService<IValidator<CreateAccountForm>>();
             _sendUsernameTokenValidator = serviceProvider.GetRequiredService<IValidator<SendUsernameTokenForm>>();
-            _verifyUsernameValidator = serviceProvider.GetRequiredService<IValidator<VerifyUsernameForm>>();
+            _receiveUsernameValidator = serviceProvider.GetRequiredService<IValidator<ReceiveUsernameTokenForm>>();
+            _sendPasswordTokenValidator = serviceProvider.GetRequiredService<IValidator<SendPasswordTokenForm>>();
+            _receivePasswordValidator = serviceProvider.GetRequiredService<IValidator<ReceivePasswordTokenForm>>();
+            _changePasswordValidator = serviceProvider.GetRequiredService<IValidator<ChangePasswordForm>>();
             _generateSessionValidator = serviceProvider.GetRequiredService<IValidator<GenerateSessionForm>>();
             _refreshSessionValidator = serviceProvider.GetRequiredService<IValidator<RefreshSessionForm>>();
             _revokeSessionValidator = serviceProvider.GetRequiredService<IValidator<RevokeSessionForm>>();
@@ -65,13 +71,13 @@ namespace Boilerplate.Core.Services
             if (form == null) throw new ArgumentNullException(nameof(form));
 
             var formValidation = await _createAccountValidator.ValidateAsync(form);
-            if (!formValidation.IsValid) throw new ValidationException(formValidation.Errors);
+            if (!formValidation.IsValid) throw new ProblemException(formValidation.Errors);
 
             var contact = new Contact(form.Username);
             form.Username = contact.Value;
 
             var user = await _userManager.FindByEmailOrPhoneNumberAsync(form.Username);
-            if (user != null) throw new ValidationException((() => form.Username, $"'{contact.Type.Humanize()}' is already in use."));
+            if (user != null) throw new ProblemException((() => form.Username, $"'{contact.Type.Humanize()}' is already in use."));
 
             user = _mapper.Map(form, new User());
             user.UserName = await _userManager.GenerateUserNameAsync(form.FirstName, form.LastName);
@@ -84,20 +90,20 @@ namespace Boilerplate.Core.Services
             if (form == null) throw new ArgumentNullException(nameof(form));
 
             var formValidation = await _sendUsernameTokenValidator.ValidateAsync(form);
-            if (!formValidation.IsValid) throw new ValidationException(formValidation.Errors);
+            if (!formValidation.IsValid) throw new ProblemException(formValidation.Errors);
 
             var contact = new Contact(form.Username);
             form.Username = contact.Value;
 
-            if (form.Changing)
+            if (form.Purpose == UsernameTokenPurpose.Change)
             {
                 var currentUser = await _userManager.GetCurrentAsync();
-                if (currentUser == null) throw new InvalidOperationException("Failed to get current user.");
+                if (currentUser == null) throw new ProblemException("Failed to get current user.", 401);
 
                 var existingUser = await _userManager.FindByEmailOrPhoneNumberAsync(form.Username);
 
                 if (currentUser.Id == existingUser?.Id)
-                    throw new ValidationException((() => form.Username, $"'{contact.Type.Humanize()}' is already in use."));
+                    throw new ProblemException((() => form.Username, $"'{contact.Type.Humanize()}' is already in use."));
 
                 switch (contact.Type)
                 {
@@ -109,7 +115,7 @@ namespace Boilerplate.Core.Services
                             {
                                 From = _emailSender.Accounts["Support"],
                                 To = form.Username,
-                                Subject = $"Change Your {contact.Type.Humanize()}",
+                                Subject = $"Change Your {contact.Type.Humanize(LetterCasing.Title)}",
                                 Body = await _viewRenderer.RenderToHtmlAsync("/Email/ChangeUsername.cshtml", (currentUser, token, contact.Type))
                             };
 
@@ -130,10 +136,10 @@ namespace Boilerplate.Core.Services
                         throw new InvalidOperationException();
                 }
             }
-            else
+            else if (form.Purpose == UsernameTokenPurpose.Verify)
             {
                 var user = await _userManager.FindByEmailOrPhoneNumberAsync(form.Username);
-                if (user == null) throw new ValidationException((() => form.Username, $"'{contact.Type.Humanize()}' is not found."));
+                if (user == null) throw new ProblemException((() => form.Username, $"'{contact.Type.Humanize()}' is not found."));
 
                 switch (contact.Type)
                 {
@@ -145,7 +151,7 @@ namespace Boilerplate.Core.Services
                             {
                                 From = _emailSender.Accounts["Support"],
                                 To = form.Username,
-                                Subject = $"Verify Your {contact.Type.Humanize()}",
+                                Subject = $"Verify Your {contact.Type.Humanize(LetterCasing.Title)}",
                                 Body = await _viewRenderer.RenderToHtmlAsync("/Email/VerifyUsername.cshtml", (user, token, contact.Type))
                             };
 
@@ -166,61 +172,154 @@ namespace Boilerplate.Core.Services
                         throw new InvalidOperationException();
                 }
             }
+            else throw new InvalidOperationException();
         }
 
-        public async Task VerifyUsernameAsync(VerifyUsernameForm form)
+        public async Task ReceiveUsernameTokenAsync(ReceiveUsernameTokenForm form)
         {
             if (form == null) throw new ArgumentNullException(nameof(form));
 
-            var formValidation = await _verifyUsernameValidator.ValidateAsync(form);
-            if (!formValidation.IsValid) throw new ValidationException(formValidation.Errors);
+            var formValidation = await _receiveUsernameValidator.ValidateAsync(form);
+            if (!formValidation.IsValid) throw new ProblemException(formValidation.Errors);
 
             var contact = new Contact(form.Username);
             form.Username = contact.Value;
-
-            if (form.Changing)
+   
+            if (form.Purpose == UsernameTokenPurpose.Change)
             {
                 var currentUser = await _userManager.GetCurrentAsync();
-                if (currentUser == null) throw new InvalidOperationException("Failed to get current user.");
+                if (currentUser == null) throw new ProblemException("Failed to get current user.", 401);
+
 
                 var existingUser = await _userManager.FindByEmailOrPhoneNumberAsync(form.Username);
 
                 if (currentUser.Id == existingUser?.Id)
-                    throw new ValidationException((() => form.Username, $"'{contact.Type.Humanize()}' is already in use."));
+                    throw new ProblemException((() => form.Username, $"'{contact.Type.Humanize()}' is already in use."));
 
                 switch (contact.Type)
                 {
                     case ContactType.EmailAddress:
-                        await _userManager.VerifyEmailTokenAsync(currentUser, form.Username, form.Code);
+                        {
+                            if (!await _userManager.CheckEmailTokenAsync(currentUser, form.Username, form.Code))
+                                throw new ProblemException((() => form.Code, $"'{nameof(form.Code).Humanize()}' is not valid."));
+
+                            await _userManager.ChangeEmailAsync(currentUser, form.Username, form.Code);
+                        }
                         break;
 
                     case ContactType.PhoneNumber:
-                        await _userManager.VerifyPhoneNumberTokenAsync(currentUser, form.Username, form.Code);
+                        {
+                            if (!await _userManager.CheckPhoneNumberTokenAsync(currentUser, form.Username, form.Code))
+                                throw new ProblemException((() => form.Code, $"'{nameof(form.Code).Humanize()}' is not valid."));
+
+                            await _userManager.ChangePhoneNumberAsync(currentUser, form.Username, form.Code);
+                        }
                         break;
 
                     default:
                         throw new InvalidOperationException();
                 }
             }
-            else
+            else if (form.Purpose == UsernameTokenPurpose.Verify)
             {
                 var user = await _userManager.FindByEmailOrPhoneNumberAsync(form.Username);
-                if (user == null) throw new ValidationException((() => form.Username, $"'{contact.Type.Humanize()}' is not found."));
+                if (user == null) throw new ProblemException((() => form.Username, $"'{contact.Type.Humanize()}' is not found."));
 
                 switch (contact.Type)
                 {
                     case ContactType.EmailAddress:
-                        await _userManager.VerifyEmailTokenAsync(user, form.Username, form.Code);
+                        {
+                            if (!await _userManager.CheckEmailTokenAsync(user, form.Username, form.Code))
+                                throw new ProblemException((() => form.Code, $"'{nameof(form.Code).Humanize()}' is not valid."));
+
+                            await _userManager.ChangeEmailAsync(user, form.Username, form.Code);
+                        }
                         break;
 
                     case ContactType.PhoneNumber:
-                        await _userManager.VerifyPhoneNumberTokenAsync(user, form.Username, form.Code);
+                        {
+                            if (!await _userManager.CheckPhoneNumberTokenAsync(user, form.Username, form.Code))
+                                throw new ProblemException((() => form.Code, $"'{nameof(form.Code).Humanize()}' is not valid."));
+
+                            await _userManager.ChangePhoneNumberAsync(user, form.Username, form.Code);
+                        }
                         break;
 
                     default:
                         throw new InvalidOperationException();
                 }
             }
+            else throw new InvalidOperationException(); 
+        }
+
+        public async Task SendPasswordTokenAsync(SendPasswordTokenForm form)
+        {
+            if (form == null) throw new ArgumentNullException(nameof(form));
+
+            var formValidation = await _sendPasswordTokenValidator.ValidateAsync(form);
+            if (!formValidation.IsValid) throw new ProblemException(formValidation.Errors);
+
+            var contact = new Contact(form.Username);
+            form.Username = contact.Value;
+
+            if (form.Purpose == PasswordTokenPurpose.Reset)
+            {
+                var user = await _userManager.FindByEmailOrPhoneNumberAsync(form.Username);
+                if (user == null) throw new ProblemException((() => form.Username, $"'{contact.Type.Humanize()}' is not found."));
+
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+                var message = new
+                {
+                    From = _emailSender.Accounts["Support"],
+                    To = form.Username,
+                    Subject = $"Reset Your Password",
+                    Body = await _viewRenderer.RenderToHtmlAsync("/Email/ResetPassword.cshtml", (user, token, contact.Type))
+                };
+
+                await _emailSender.SendAsync(message.From, message.To, message.Subject, message.Body);
+
+            }
+            else throw new InvalidOperationException();
+        }
+
+        public async Task ReceivePasswordTokenAsync(ReceivePasswordTokenForm form)
+        {
+            if (form == null) throw new ArgumentNullException(nameof(form));
+
+            var formValidation = await _receivePasswordValidator.ValidateAsync(form);
+            if (!formValidation.IsValid) throw new ProblemException(formValidation.Errors);
+
+            var contact = new Contact(form.Username);
+            form.Username = contact.Value;
+
+            if (form.Purpose == PasswordTokenPurpose.Reset)
+            {
+                var user = await _userManager.FindByEmailOrPhoneNumberAsync(form.Username);
+                if (user == null) throw new ProblemException((() => form.Username, $"'{contact.Type.Humanize()}' is not found."));
+
+                if (!await _userManager.CheckResetPasswordTokenAsync(user, form.Code))
+                    throw new ProblemException((() => form.Code, $"'{nameof(form.Code).Humanize()}' is not valid."));
+
+                await _userManager.ResetPasswordAsync(user, form.Password, form.Code);
+            }
+            else throw new InvalidOperationException();
+        }
+
+        public async Task ChangePasswordAsync(ChangePasswordForm form)
+        {
+            if (form == null) throw new ArgumentNullException(nameof(form));
+
+            var formValidation = await _changePasswordValidator.ValidateAsync(form);
+            if (!formValidation.IsValid) throw new ProblemException(formValidation.Errors);
+
+            var currentUser = await _userManager.GetCurrentAsync();
+            if (currentUser == null) throw new ProblemException("Failed to get current user.", 401);
+
+            if (!await _userManager.CheckPasswordAsync(currentUser, form.CurrentPassword))
+                throw new ProblemException((() => form.CurrentPassword, $"'{nameof(form.CurrentPassword).Humanize()}' is not correct."));
+
+            await _userManager.ChangePasswordAsync(currentUser, form.CurrentPassword, form.NewPassword);
         }
 
         private async Task AddUserToDeservedRolesAsync(User user)
@@ -246,19 +345,19 @@ namespace Boilerplate.Core.Services
             if (form == null) throw new ArgumentNullException(nameof(form));
 
             var formValidation = await _generateSessionValidator.ValidateAsync(form);
-            if (!formValidation.IsValid) throw new ValidationException(formValidation.Errors);
+            if (!formValidation.IsValid) throw new ProblemException(formValidation.Errors);
 
             var contact = new Contact(form.Username);
             form.Username = contact.Value;
 
             var user = await _userManager.FindByEmailOrPhoneNumberAsync(form.Username);
-            if (user == null) throw new ValidationException((() => form.Username, $"'{contact.Type.Humanize()}' is not found."));
+            if (user == null) throw new ProblemException((() => form.Username, $"'{contact.Type.Humanize()}' is not found."));
 
             if (!await _userManager.CheckPasswordAsync(user, form.Password))
-                throw new ValidationException((() => form.Password, $"'{nameof(form.Password).Humanize()}' is not correct."));
+                throw new ProblemException((() => form.Password, $"'{nameof(form.Password).Humanize()}' is not correct."));
 
             if (!user.EmailConfirmed && !user.PhoneNumberConfirmed)
-                throw new ValidationException((() => form.Username, $"'{contact.Type.Humanize()}' is not verified."));
+                throw new ProblemException((() => form.Username, $"'{contact.Type.Humanize()}' is not verified."));
 
             var session = await _userManager.GenerateSessionAsync(user);
             var model = _mapper.Map<GenerateSessionModel>(session);
@@ -270,10 +369,10 @@ namespace Boilerplate.Core.Services
             if (form == null) throw new ArgumentNullException(nameof(form));
 
             var formValidation = await _refreshSessionValidator.ValidateAsync(form);
-            if (!formValidation.IsValid) throw new ValidationException(formValidation.Errors);
+            if (!formValidation.IsValid) throw new ProblemException(formValidation.Errors);
 
             var user = await _userManager.FindBySessionAsync(form.RefreshToken);
-            if (user == null) throw new ValidationException((() => form.RefreshToken, $"'{nameof(form.RefreshToken).Humanize()}' is not associated to any user."));
+            if (user == null) throw new ProblemException((() => form.RefreshToken, $"'{nameof(form.RefreshToken).Humanize()}' is not associated to any user."));
 
             var session = await _userManager.GenerateSessionAsync(user);
             var model = _mapper.Map<GenerateSessionModel>(session);
@@ -286,10 +385,10 @@ namespace Boilerplate.Core.Services
                 throw new ArgumentNullException(nameof(form));
 
             var formValidation = await _revokeSessionValidator.ValidateAsync(form);
-            if (!formValidation.IsValid) throw new ValidationException(formValidation.Errors);
+            if (!formValidation.IsValid) throw new ProblemException(formValidation.Errors);
 
             var user = await _userManager.FindBySessionAsync(form.RefreshToken);
-            if (user == null) throw new ValidationException((() => form.RefreshToken, $"'{nameof(form.RefreshToken).Humanize()}' is not associated to any user."));
+            if (user == null) throw new ProblemException((() => form.RefreshToken, $"'{nameof(form.RefreshToken).Humanize()}' is not associated to any user."));
 
             await _userManager.RevokeSessionAsync(user, form.RefreshToken);
         }
@@ -301,7 +400,13 @@ namespace Boilerplate.Core.Services
 
         Task SendUsernameTokenAsync(SendUsernameTokenForm form);
 
-        Task VerifyUsernameAsync(VerifyUsernameForm form);
+        Task ReceiveUsernameTokenAsync(ReceiveUsernameTokenForm form);
+
+        Task SendPasswordTokenAsync(SendPasswordTokenForm form);
+
+        Task ReceivePasswordTokenAsync(ReceivePasswordTokenForm form);
+
+        Task ChangePasswordAsync(ChangePasswordForm form);
 
         Task<GenerateSessionModel> GenerateSessionAsync(GenerateSessionForm form);
 

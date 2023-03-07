@@ -14,7 +14,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Boilerplate.Infrastructure.Identity.Jwt
+namespace Boilerplate.Infrastructure.Extensions.Identity.Jwt
 {
     public class JwtBearerConfiguredOptions : IConfigureNamedOptions<JwtBearerOptions>
     {

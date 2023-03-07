@@ -8,36 +8,44 @@ using System.Threading.Tasks;
 
 namespace Boilerplate.Core.Forms.Accounts
 {
-    public class SendUsernameTokenForm
+    public class SendPasswordTokenForm
     {
         public string Username { get; set; } = default!;
 
-        public bool Changing { get; set; }
+        public PasswordTokenPurpose Purpose { get; set; }
     }
 
-    public class SendUsernameTokenValidator : AbstractValidator<SendUsernameTokenForm>
+    public class SendPasswordTokenValidator : AbstractValidator<SendPasswordTokenForm>
     {
-        public SendUsernameTokenValidator()
+        public SendPasswordTokenValidator()
         {
             RuleFor(rule => rule.Username).NotEmpty().Username();
         }
     }
 
-    public class VerifyUsernameForm
+    public class ReceivePasswordTokenForm
     {   
         public string Username { get; set; } = default!;
 
+        public string Password { get; set; } = default!;
+
         public string Code { get; set; } = default!;
 
-        public bool Changing { get; set; }
+        public PasswordTokenPurpose Purpose { get; set; }
     }
 
-    public class VerifyUsernameValidator : AbstractValidator<VerifyUsernameForm>
+    public class ReceivePasswordTokenValidator : AbstractValidator<ReceivePasswordTokenForm>
     {
-        public VerifyUsernameValidator()
+        public ReceivePasswordTokenValidator()
         {
             RuleFor(rule => rule.Username).NotEmpty().Username();
+            RuleFor(rule => rule.Password).NotEmpty().Password();
             RuleFor(rule => rule.Code).NotEmpty();
         }
+    }
+
+    public enum PasswordTokenPurpose
+    {
+        Reset
     }
 }

@@ -13,8 +13,6 @@ namespace Boilerplate.Core.Extensions.Identity
 
         Task AddToRolesAsync(User user, IEnumerable<string> roleNames);
 
-        Task<bool> CheckPasswordAsync(User user, string password);
-
         Task CreateAsync(User user, string password);
 
         Task<User?> GetCurrentAsync();
@@ -37,8 +35,22 @@ namespace Boilerplate.Core.Extensions.Identity
 
         Task<string> GeneratePhoneNumberTokenAsync(User user, string phoneNumber);
 
-        Task VerifyEmailTokenAsync(User user, string email, string token);
+        Task<string> GeneratePasswordResetTokenAsync(User user);
 
-        Task VerifyPhoneNumberTokenAsync(User user, string phoneNumber, string token);
+        Task ChangeEmailAsync(User user, string email, string token);
+
+        Task ChangePhoneNumberAsync(User user, string phoneNumber, string token);
+
+        Task ChangePasswordAsync(User user, string currentPassword, string newPassword);
+
+        Task ResetPasswordAsync(User user, string newPassword, string token);
+
+        Task<bool> CheckEmailTokenAsync(User user, string email, string token);
+
+        Task<bool> CheckPhoneNumberTokenAsync(User user, string phoneNumber, string token);
+
+        Task<bool> CheckResetPasswordTokenAsync(User user, string token);
+
+        Task<bool> CheckPasswordAsync(User user, string password);
     }
 }

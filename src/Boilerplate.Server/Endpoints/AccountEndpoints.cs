@@ -13,40 +13,65 @@ namespace Boilerplate.Server.Endpoints
                 await accountService.CreateAsync(form);
                 return Results.Ok();
 
-            }).WithName("CreateAccount");
+            }).WithName("Account.CreateAccount");
+
 
             endpoints.MapPost("/accounts/username/token/send", async (IAccountService accountService, [FromBody] SendUsernameTokenForm form) =>
             {
                 await accountService.SendUsernameTokenAsync(form);
                 return Results.Ok();
 
-            }).WithName("SendUsernameToken");
+            }).WithName("Account.SendUsernameToken");
 
-            endpoints.MapPost("/accounts/username/token/verify", async (IAccountService accountService, [FromBody] VerifyUsernameForm form) =>
+            endpoints.MapPost("/accounts/username/token/receive", async (IAccountService accountService, [FromBody] ReceiveUsernameTokenForm form) =>
             {
-                await accountService.VerifyUsernameAsync(form);
+                await accountService.ReceiveUsernameTokenAsync(form);
                 return Results.Ok();
 
-            }).WithName("VerifyUsername");
+            }).WithName("Account.ReceiveUsernameToken");
+
+
+            endpoints.MapPost("/accounts/password/token/send", async (IAccountService accountService, [FromBody] SendPasswordTokenForm form) =>
+            {
+                await accountService.SendPasswordTokenAsync(form);
+                return Results.Ok();
+
+            }).WithName("Account.SendPasswordToken");
+
+            endpoints.MapPost("/accounts/password/token/receive", async (IAccountService accountService, [FromBody] ReceivePasswordTokenForm form) =>
+            {
+                await accountService.ReceivePasswordTokenAsync(form);
+                return Results.Ok();
+
+            }).WithName("ReceivePasswordToken");
+
+
+            endpoints.MapPost("/accounts/password/change", async (IAccountService accountService, [FromBody] ChangePasswordForm form) =>
+            {
+                await accountService.ChangePasswordAsync(form);
+                return Results.Ok();
+
+            }).WithName("Account.ChangePassword");
+
 
             endpoints.MapPost("/accounts/sessions/generate", async (IAccountService accountService, [FromBody] GenerateSessionForm form) =>
             {
                 return Results.Ok(await accountService.GenerateSessionAsync(form));
 
-            }).WithName("GenerateSession");
+            }).WithName("Account.GenerateSession");
 
             endpoints.MapPost("/accounts/sessions/refresh", async (IAccountService accountService, [FromBody] RefreshSessionForm form) =>
             {
                 return Results.Ok(await accountService.RefreshSessionAsync(form));
 
-            }).WithName("RefreshSession");
+            }).WithName("Account.RefreshSession");
 
             endpoints.MapDelete("/accounts/sessions/revoke", async (IAccountService accountService, [FromBody] RevokeSessionForm form) =>
             {
                 await accountService.RevokeSessionAsync(form);
                 return Results.Ok();
 
-            }).WithName("RevokeSession");
+            }).WithName("Account.RevokeSession");
         }
     }
 }

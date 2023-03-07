@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Boilerplate.Infrastructure.Identity
+namespace Boilerplate.Infrastructure.Extensions.Identity
 {
     public class UserSessionOptions
     {

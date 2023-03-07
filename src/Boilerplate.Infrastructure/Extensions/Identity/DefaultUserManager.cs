@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using PhoneNumbers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -20,7 +21,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Boilerplate.Infrastructure.Identity
+namespace Boilerplate.Infrastructure.Extensions.Identity
 {
     public class DefaultUserManager : UserManager<User>, IUserManager
     {
@@ -40,7 +41,7 @@ namespace Boilerplate.Infrastructure.Identity
             ILookupNormalizer keyNormalizer,
             IdentityErrorDescriber errors,
             IServiceProvider services,
-            ILogger<DefaultUserManager> logger, 
+            ILogger<DefaultUserManager> logger,
             DefaultRoleManager roleManager,
             DefaultDbContext dbContext, IHttpContextAccessor httpContextAccessor) : base(store, optionsAccessor, passwordHasher, userValidators, passwordValidators, keyNormalizer, errors, services, logger)
         {
@@ -53,10 +54,6 @@ namespace Boilerplate.Infrastructure.Identity
 
         public async Task<User?> FindByEmailOrPhoneNumberAsync(string emailOrPhoneNumber)
         {
-            ThrowIfDisposed();
-
-            if (emailOrPhoneNumber == null) throw new ArgumentNullException(nameof(emailOrPhoneNumber));
-
             var user = await FindByEmailAsync(emailOrPhoneNumber);
             user ??= await FindByPhoneNumberAsync(emailOrPhoneNumber);
             return user;
@@ -77,11 +74,6 @@ namespace Boilerplate.Infrastructure.Identity
         Task IUserManager.AddToRolesAsync(User user, IEnumerable<string> roleNames)
         {
             return AddToRolesAsync(user, roleNames);
-        }
-
-        Task<bool> IUserManager.CheckPasswordAsync(User user, string password)
-        {
-            return CheckPasswordAsync(user, password);
         }
 
         public async Task<string> GenerateUserNameAsync(string firstName, string lastName)
@@ -111,16 +103,52 @@ namespace Boilerplate.Infrastructure.Identity
             return GenerateChangePhoneNumberTokenAsync(user, phoneNumber);
         }
 
-        async Task IUserManager.VerifyEmailTokenAsync(User user, string email, string token)
+        Task<string> IUserManager.GeneratePasswordResetTokenAsync(User user)
+        {
+            return GeneratePasswordResetTokenAsync(user);
+        }
+
+        async Task IUserManager.ChangeEmailAsync(User user, string email, string token)
         {
             var result = await ChangeEmailAsync(user, email, token);
             if (!result.Succeeded) throw new IdentityException(result.Errors);
         }
 
-        async Task IUserManager.VerifyPhoneNumberTokenAsync(User user, string phoneNumber, string token)
+        async Task IUserManager.ChangePhoneNumberAsync(User user, string phoneNumber, string token)
         {
-            var result = await ChangeEmailAsync(user, phoneNumber, token);
+            var result = await ChangePhoneNumberAsync(user, phoneNumber, token);
             if (!result.Succeeded) throw new IdentityException(result.Errors);
+        }
+
+        Task IUserManager.ChangePasswordAsync(User user, string currentPassword, string newPassword)
+        {
+            return ChangePasswordAsync(user, currentPassword, newPassword);
+        }
+
+        async Task IUserManager.ResetPasswordAsync(User user, string newPassword, string token)
+        {
+            var result = await ResetPasswordAsync(user, token, newPassword);
+            if (!result.Succeeded) throw new IdentityException(result.Errors);
+        }
+
+        Task<bool> IUserManager.CheckEmailTokenAsync(User user, string email, string token)
+        {
+            return VerifyUserTokenAsync(user, Options.Tokens.ChangeEmailTokenProvider, GetChangeEmailTokenPurpose(email), token);
+        }
+
+        Task<bool> IUserManager.CheckPhoneNumberTokenAsync(User user, string phoneNumber, string token)
+        {
+            return VerifyChangePhoneNumberTokenAsync(user, token, phoneNumber);
+        }
+
+        Task<bool> IUserManager.CheckPasswordAsync(User user, string password)
+        {
+            return CheckPasswordAsync(user, password);
+        }
+
+        Task<bool> IUserManager.CheckResetPasswordTokenAsync(User user, string token)
+        {
+            return VerifyUserTokenAsync(user, Options.Tokens.PasswordResetTokenProvider, "ResetPassword", token);
         }
 
         public async Task<User?> FindByPhoneNumberAsync(string phoneNumber)

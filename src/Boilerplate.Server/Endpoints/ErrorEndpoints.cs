@@ -17,15 +17,17 @@ namespace Boilerplate.Server.Endpoints
                 if (ex is null) return Results.Problem(statusCode: statusCode);
 
 
-                if (ex is ValidationException vex)
+                if (ex is ProblemException problem)
                 {
                     string GetPropertyName(string propertyName) =>
                     (httpContext.RequestServices.GetRequiredService<IOptions<JsonOptions>>()?.Value)
                     ?.SerializerOptions.DictionaryKeyPolicy?.ConvertName(propertyName) ?? propertyName;
 
-                    return Results.ValidationProblem(vex.Errors.ToDictionary(pair => GetPropertyName(pair.Key), pair => pair.Value),
-                                                     title: vex.Title,
-                                                     detail: environment.IsDevelopment() ? $"{vex.Message}{Environment.NewLine}{vex.StackTrace}" : null);
+                    return Results.ValidationProblem(
+                        errors: problem.Errors.ToDictionary(pair => GetPropertyName(pair.Key), pair => pair.Value),
+                        statusCode: problem.StatusCode,
+                        title: problem.Title,
+                        detail: environment.IsDevelopment() ? $"{problem.Message}{Environment.NewLine}{problem.StackTrace}" : null);
                 }
                 else
                 {

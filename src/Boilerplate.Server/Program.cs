@@ -1,7 +1,6 @@
 using Boilerplate.Core;
 using Boilerplate.Core.Entities;
 using Boilerplate.Infrastructure.Data;
-using Boilerplate.Infrastructure.Identity;
 using Boilerplate.Server.Endpoints;
 using FluentValidation;
 using Humanizer;
@@ -18,12 +17,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
-using Boilerplate.Infrastructure.Identity.Jwt;
 using MailKit.Security;
 using Boilerplate.Infrastructure.Extensions.SmsSender;
 using Boilerplate.Infrastructure.Extensions.EmailSender.Smtp;
 using Boilerplate.Infrastructure.Extensions.ViewRenderer.Razor;
 using Boilerplate.Core.Extensions.Identity;
+using Boilerplate.Infrastructure.Extensions.Identity.Jwt;
+using Boilerplate.Infrastructure.Extensions.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 

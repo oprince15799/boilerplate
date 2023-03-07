@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Boilerplate.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Boilerplate.Infrastructure.Identity
+namespace Boilerplate.Infrastructure.Extensions.Identity
 {
     public class DefaultUserStore : UserStore<User, Role, DefaultDbContext, long, IdentityUserClaim<long>, UserRole,
         IdentityUserLogin<long>, IdentityUserToken<long>, IdentityRoleClaim<long>>

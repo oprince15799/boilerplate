@@ -20,7 +20,7 @@ namespace Boilerplate.Core.Forms.Accounts
         public GenerateSessionValidator()
         {
             RuleFor(rule => rule.Username).NotEmpty().Username();
-            RuleFor(rule => rule.Password).NotEmpty().Password();
+            RuleFor(rule => rule.Password).NotEmpty(); // Validating the password isn't required.
         }
     }
 }

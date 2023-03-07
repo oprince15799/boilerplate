@@ -16,7 +16,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace Boilerplate.Infrastructure.Identity
+namespace Boilerplate.Infrastructure.Extensions.Identity
 {
     public class DefaultUserSessionConfiguredOptions : IConfigureNamedOptions<UserSessionOptions>
     {
