@@ -15,6 +15,4 @@
 	  <ProjectReference Include="..\Boilerplate.Core\Boilerplate.Core.csproj" />
 	</ItemGroup>
 
-
-
 </Project>

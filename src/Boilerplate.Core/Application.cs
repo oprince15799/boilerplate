@@ -22,8 +22,7 @@ namespace Boilerplate.Core
                 return assembly ?? Assembly.LoadFrom(assemblyName);
             });
 
-
-            public static Assembly Infrastructure => assemblies.GetOrAdd("Boilerplate.Infrastructure", assemblyName =>
+            public static Assembly Data => assemblies.GetOrAdd("Boilerplate.Data", assemblyName =>
             {
                 var assembly = AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name == assemblyName);
                 return assembly ?? Assembly.LoadFrom(assemblyName);

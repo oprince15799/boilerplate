@@ -1,6 +1,6 @@
 using Boilerplate.Core;
 using Boilerplate.Core.Entities;
-using Boilerplate.Infrastructure.Data;
+using Boilerplate.Data;
 using Boilerplate.Server.Endpoints;
 using FluentValidation;
 using Humanizer;
@@ -18,12 +18,12 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using MailKit.Security;
-using Boilerplate.Infrastructure.Extensions.SmsSender;
-using Boilerplate.Infrastructure.Extensions.EmailSender.Smtp;
-using Boilerplate.Infrastructure.Extensions.ViewRenderer.Razor;
 using Boilerplate.Core.Extensions.Identity;
-using Boilerplate.Infrastructure.Extensions.Identity.Jwt;
-using Boilerplate.Infrastructure.Extensions.Identity;
+using Boilerplate.Extensions.Identity;
+using Boilerplate.Extensions.ViewRenderer.Razor;
+using Boilerplate.Extensions.SmsSender;
+using Boilerplate.Extensions.Identity.Jwt;
+using Boilerplate.Extensions.EmailSender.Smtp;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,7 +57,7 @@ builder.Services.AddAutoMapper(new[] { Application.Assemblies.Core });
 builder.Services.AddDbContext<DefaultDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("Default");
-    options.UseSqlServer(connectionString, sqlOptions => sqlOptions.MigrationsAssembly(Application.Assemblies.Infrastructure.FullName));
+    options.UseSqlServer(connectionString, sqlOptions => sqlOptions.MigrationsAssembly(Application.Assemblies.Data.FullName));
 });
 
 // Add Identity services to the container.
