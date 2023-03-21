@@ -1,11 +1,49 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-import styles from '@/styles/Home.module.css'
+import Head from 'next/head';
+import Image from 'next/image';
+import { Inter } from 'next/font/google';
+import styles from '@/styles/Home.module.css';
+import { useEffect, useMemo, useState } from 'react';
+import { createHttpClient } from '@/utils/http-client';
+import { ExternalWindow } from '@/utils/external-window';
 
 const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
+
+  const httpClient = useMemo(() => createHttpClient({
+    baseURL: 'https://localhost:7061',
+    tokens: {
+      generate: async (client, provider, credentials) => {
+        if (provider == null) {
+          return client.post('/accounts/sessions/generate', credentials);
+        }
+        else {
+
+          try {
+            const externalURL = new URL(`${client.defaults.baseURL}/accounts/${provider}/sessions/connect`);
+            externalURL.searchParams.set('origin', window.origin);
+
+            await new ExternalWindow(externalURL.toString(), { center: true }).open();
+          }
+          catch (error) { }
+
+          return await client.post(`/accounts/${provider}/sessions/generate`);
+        }
+      },
+      refresh: (client, token) => client.post('/accounts/sessions/refresh', { refreshToken: token }),
+      revoke: (client, token) => client.post('/accounts/sessions/revoke', { refreshToken: token }),
+    }
+  }), []);
+
+
+  const [user, setUser] = useState(httpClient.user.value);
+
+  useEffect(() => {
+    httpClient.user.subscribe((value) => {
+      setUser(value)
+    });
+  }, []);
+
   return (
     <>
       <Head>
@@ -61,47 +99,63 @@ export default function Home() {
 
         <div className={styles.grid}>
           <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+            href="#"
             className={styles.card}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => {
+              e.preventDefault();
+              httpClient.signIn({ username: 'princeowusu.272@gmail.com', password: 'Owusu#15799' });
+            }}
           >
             <h2 className={inter.className}>
-              Docs <span>-&gt;</span>
+              SignIn with Internal <span>-&gt;</span>
             </h2>
-            <p className={inter.className}>
-              Find in-depth information about Next.js features and&nbsp;API.
-            </p>
+          </a>
+          <a
+            href="#"
+            className={styles.card}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => {
+              e.preventDefault();
+              httpClient.signInWith('google');
+            }}
+          >
+            <h2 className={inter.className}>
+              SignIn with External <span>-&gt;</span>
+            </h2>
           </a>
 
           <a
-            href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+            href="#"
             className={styles.card}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => {
+              e.preventDefault();
+              httpClient.get('/protected');
+            }}
           >
             <h2 className={inter.className}>
-              Learn <span>-&gt;</span>
+              Access Resource <span>-&gt;</span>
             </h2>
-            <p className={inter.className}>
-              Learn about Next.js in an interactive course with&nbsp;quizzes!
-            </p>
           </a>
-
           <a
-            href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+            href="#"
             className={styles.card}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={async (e) => {
+              e.preventDefault();
+
+              console.log('Closed')
+            }}
           >
             <h2 className={inter.className}>
-              Templates <span>-&gt;</span>
+              Open External Window <span>-&gt;</span>
             </h2>
-            <p className={inter.className}>
-              Discover and deploy boilerplate example Next.js&nbsp;projects.
-            </p>
           </a>
-
           <a
             href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
             className={styles.card}
@@ -116,7 +170,10 @@ export default function Home() {
               with&nbsp;Vercel.
             </p>
           </a>
+
+          <div className={styles.card}><div className={inter.className}>User: {JSON.stringify(user)}</div></div>
         </div>
+
       </main>
     </>
   )

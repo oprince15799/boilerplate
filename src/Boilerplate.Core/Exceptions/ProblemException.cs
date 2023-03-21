@@ -35,7 +35,7 @@ namespace Boilerplate.Core.Exceptions
         }
 
         public ProblemException(IDictionary<string, string[]> errors) 
-            : this("One or more validation errors occurred.", errors)
+            : this("One or more validation errors occurred", errors)
         {
         }
 
@@ -77,13 +77,13 @@ namespace Boilerplate.Core.Exceptions
 
         public ProblemException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
-            Title = "One or more validation errors occurred.";
+            Title = "One or more validation errors occurred";
             Errors = info.GetValue("errors", typeof(IDictionary<string, string[]>)) as IDictionary<string, string[]> ?? new Dictionary<string, string[]>();
         }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            if (info == null) throw new ArgumentNullException("info");
+            if (info == null) throw new ArgumentNullException(nameof(info));
 
             info.AddValue("errors", Errors);
             base.GetObjectData(info, context);

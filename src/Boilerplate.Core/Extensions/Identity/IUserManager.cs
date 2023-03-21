@@ -1,4 +1,5 @@
 ﻿using Boilerplate.Core.Entities;
+using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,8 @@ namespace Boilerplate.Core.Extensions.Identity
         Task AddToRolesAsync(User user, IEnumerable<string> roleNames);
 
         Task CreateAsync(User user, string password);
+
+        Task CreateAsync(User user);
 
         Task<User?> GetCurrentAsync();
 
@@ -52,5 +55,11 @@ namespace Boilerplate.Core.Extensions.Identity
         Task<bool> CheckResetPasswordTokenAsync(User user, string token);
 
         Task<bool> CheckPasswordAsync(User user, string password);
+
+        Task AddLoginAsync(User user, UserLoginInfo login);
+
+        Task RemoveLoginAsync(User user, UserLoginInfo login);
+
+        Task<IList<UserLoginInfo>> GetLoginsAsync(User user);
     }
 }

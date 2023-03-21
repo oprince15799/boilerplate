@@ -47,7 +47,7 @@ namespace Boilerplate.Data
 
             // Get connection string
             var optionsBuilder = new DbContextOptionsBuilder<DefaultDbContext>();
-            var connectionString = configuration.GetConnectionString("Default");
+            var connectionString = configuration.GetSection("DbSettings:Default:ConnectionString").Value!;
             optionsBuilder.UseSqlServer(connectionString, b => b.MigrationsAssembly(Application.Assemblies.Data.FullName));
             return new DefaultDbContext(optionsBuilder.Options);
         }

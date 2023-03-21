@@ -12,18 +12,14 @@ using System.Security.Claims;
 using System.Text.Json.Serialization;
 using System.Text.Json;
 using Boilerplate.Core.Services;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Text;
-using MailKit.Security;
 using Boilerplate.Core.Extensions.Identity;
 using Boilerplate.Extensions.Identity;
 using Boilerplate.Extensions.ViewRenderer.Razor;
 using Boilerplate.Extensions.SmsSender;
-using Boilerplate.Extensions.Identity.Jwt;
 using Boilerplate.Extensions.EmailSender.Smtp;
+using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authentication.Google;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,12 +52,22 @@ builder.Services.AddAutoMapper(new[] { Application.Assemblies.Core });
 // Add Data services to the container.
 builder.Services.AddDbContext<DefaultDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("Default");
+    var connectionString = builder.Configuration.GetValue<string>("DbSettings:Default:ConnectionString")!;
     options.UseSqlServer(connectionString, sqlOptions => sqlOptions.MigrationsAssembly(Application.Assemblies.Data.FullName));
 });
 
 // Add Identity services to the container.
-builder.Services.ConfigureOptions<DefaultUserSessionConfiguredOptions>();
+
+builder.Services.ConfigureOptions<DefaultUserBearerConfiguredOptions>();
+
+builder.Services.Configure<UserSessionOptions>(options =>
+{
+    options.EnableMultiSignInSessions = true;
+    options.EnableMultiSignOutSessions = false;
+    options.AccessTokenExpiresAfter = TimeSpan.FromSeconds(10);
+    options.RefreshTokenExpiresAfter = TimeSpan.FromDays(31);
+});
+
 builder.Services.AddIdentity<User, Role>(options => {
     // Password settings.
     options.Password.RequireDigit = false;
@@ -105,14 +111,66 @@ builder.Services.AddIdentity<User, Role>(options => {
 builder.Services.AddScoped<IUserManager>(provider => provider.GetRequiredService<DefaultUserManager>());
 builder.Services.AddScoped<IRoleManager>(provider => provider.GetRequiredService<DefaultRoleManager>());
 
-builder.Services.ConfigureOptions<JwtBearerConfiguredOptions>(); 
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultSignInScheme = JwtBearerDefaults.AuthenticationScheme;
 })
-    .AddJwtBearer();
+.AddJwtBearer()
+    .AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
+    {
+        options.SignInScheme = IdentityConstants.ExternalScheme;
+        options.ClientId = builder.Configuration.GetValue<string>("AuthSettings:Google:ClientId")!;
+        options.ClientSecret = builder.Configuration.GetValue<string>("AuthSettings:Google:ClientSecret")!;
+        options.AccessDeniedPath = "/account/access-denied";
+    });
+
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    // Cookie settings
+    options.Cookie.Domain = null;
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.None;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+    ? CookieSecurePolicy.SameAsRequest
+    : CookieSecurePolicy.Always;
+
+    options.ExpireTimeSpan = TimeSpan.FromDays(30);
+    options.SlidingExpiration = true;
+
+    options.LoginPath = "/";
+    options.LogoutPath = "/";
+
+    // Not creating a new object since ASP.NET Identity has created
+    // one already and hooked to the OnValidatePrincipal event.
+    // See https://github.com/aspnet/AspNetCore/blob/5a64688d8e192cacffda9440e8725c1ed41a30cf/src/Identity/src/Identity/IdentityServiceCollectionExtensions.cs#L56
+    options.Events.OnRedirectToLogin = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Task.CompletedTask;
+    };
+});
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy
+        .WithOrigins(builder.Configuration.GetSection("ClientSettings:Origins").Get<string[]>()!)
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials()
+        .WithExposedHeaders("Content-Disposition")
+        .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
+    });
+});
 
 // Add External services to the container.
 
@@ -137,7 +195,53 @@ builder.Services.Configure<JsonOptions>(options =>
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    var assembly = Assembly.GetExecutingAssembly();
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Version = "v1",
+        Title = assembly.GetName().Name,
+        Description = "An ASP.NET Core Web API for managing ToDo items",
+        TermsOfService = new Uri("https://example.com/terms"),
+        Contact = new OpenApiContact
+        {
+            Name = "Example Contact",
+            Url = new Uri("https://example.com/contact")
+        },
+        License = new OpenApiLicense
+        {
+            Name = "Example License",
+            Url = new Uri("https://example.com/license")
+        }
+    });
+
+    options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Description = "\"Standard Authorization header using the Bearer scheme (JWT). Example: \\\"Bearer {token}\\\"\"",
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        BearerFormat = "JWT",
+        Scheme = JwtBearerDefaults.AuthenticationScheme
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = JwtBearerDefaults.AuthenticationScheme
+                }
+            }, Array.Empty<string>()
+        }
+    });
+
+    var xmlFilePath = Path.Combine(AppContext.BaseDirectory, $"{assembly.GetName().Name}.xml");
+    if (File.Exists(xmlFilePath)) options.IncludeXmlComments(xmlFilePath);
+});
 
 var app = builder.Build();
 
@@ -156,6 +260,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors();
 
 app.UseAuthorization();
 

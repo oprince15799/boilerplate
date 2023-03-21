@@ -32,6 +32,15 @@ namespace Boilerplate.Core.Helpers
             return Regex.IsMatch(value.ToLowerInvariant(), "^[-+0-9() ]+$");
         }
 
+        public static bool IsUrlAllowed(string url, string[] allowedOrigins)
+        {
+            if (allowedOrigins.Any(origin => Uri.Compare(new Uri(origin, UriKind.Absolute), new Uri(url), UriComponents.SchemeAndServer, UriFormat.UriEscaped, StringComparison.InvariantCultureIgnoreCase) == 0))
+                return true;
+
+            return false;
+        }
+
+
         public static bool TryParseEmail(string value, [NotNullWhen(true)] out MailAddress? email)
         {
             try

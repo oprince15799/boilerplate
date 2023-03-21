@@ -1,4 +1,5 @@
-﻿using Boilerplate.Extensions.Identity;
+﻿using Boilerplate.Core;
+using Boilerplate.Core.Helpers;
 using Humanizer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
@@ -15,30 +16,38 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Boilerplate.Extensions.Identity.Jwt
+namespace Boilerplate.Extensions.Identity
 {
-    public class JwtBearerConfiguredOptions : IConfigureNamedOptions<JwtBearerOptions>
+    public class DefaultUserBearerConfiguredOptions : IConfigureNamedOptions<JwtBearerOptions>
     {
-        private readonly UserSessionOptions userSessionOptions;
+        private readonly IConfiguration _configuration;
+        private readonly string issuer;
 
-        public JwtBearerConfiguredOptions(IOptions<UserSessionOptions> identityOptionsAccessor)
+        public DefaultUserBearerConfiguredOptions(IConfiguration configuration, IHttpContextAccessor httpContextAccessor)
         {
-            userSessionOptions = identityOptionsAccessor?.Value ?? throw new ArgumentNullException(nameof(identityOptionsAccessor));
+            _configuration = configuration;
+            var request = httpContextAccessor.HttpContext?.Request ?? throw new InvalidOperationException();
+            issuer = string.Concat(request!.Scheme + "://" + request.Host.ToUriComponent());
         }
 
         public void Configure(string? name, JwtBearerOptions options)
         {
+            var securityKey = AlgorithmHelper.GenerateHash($"{JwtBearerDefaults.AuthenticationScheme} {Application.Id}");
+
             options.RequireHttpsMetadata = false;
             options.SaveToken = true;
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
-                ValidateAudience = userSessionOptions.Issuer != null,
+                ValidIssuer = issuer,
+
+                ValidateAudience = true,
+                ValidAudience = null,
+                ValidAudiences = _configuration.GetSection("ClientSettings:Origins").Get<string[]>()!.Prepend(issuer),
+
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = userSessionOptions.Issuer,
-                ValidAudience = userSessionOptions.Audience,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(userSessionOptions.Secret)),
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(securityKey)),
                 ClockSkew = TimeSpan.Zero
             };
             options.Events = new JwtBearerEvents

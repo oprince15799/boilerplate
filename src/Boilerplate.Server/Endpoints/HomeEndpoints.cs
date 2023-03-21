@@ -10,9 +10,10 @@ namespace Boilerplate.Server.Endpoints
     {
         public static void MapHomeEndpoints(this IEndpointRouteBuilder endpoints)
         {
-            endpoints.Map("/", (IEmailSender emailSender) =>
+            endpoints.MapGet("/protected", () =>
             {
-            });
+                return Results.Content("Granted");
+            }).RequireAuthorization();
         }
     }
 }

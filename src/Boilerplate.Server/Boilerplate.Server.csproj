@@ -9,6 +9,8 @@
   <ItemGroup>
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.5.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Facebook" Version="7.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="7.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.3" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
   </ItemGroup>
@@ -18,7 +20,7 @@
     <ProjectReference Include="..\Boilerplate.Core.Templates\Boilerplate.Core.Templates.csproj" />
     <ProjectReference Include="..\Boilerplate.Core\Boilerplate.Core.csproj" />
     <ProjectReference Include="..\Boilerplate.Data\Boilerplate.Data.csproj" />
-    <ProjectReference Include="..\Boilerplate.Infrastructure\Boilerplate.Extensions.csproj" />
+    <ProjectReference Include="..\Boilerplate.Extensions\Boilerplate.Extensions.csproj" />
   </ItemGroup>
 
 </Project>

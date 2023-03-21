@@ -1,9 +1,11 @@
-﻿using Boilerplate.Core.Entities;
+﻿using AngleSharp.Dom;
+using Boilerplate.Core.Entities;
 using Boilerplate.Core.Extensions.Identity;
 using Boilerplate.Core.Helpers;
 using Boilerplate.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,11 +32,13 @@ namespace Boilerplate.Extensions.Identity
         private readonly DefaultDbContext _dbContext;
         private readonly HttpContext _httpContext;
         private readonly UserSessionOptions _sessionOptions;
+        private readonly JwtBearerOptions _jwtBearerOptions;
 
         public DefaultUserManager(
             IUserStore<User> store,
             IOptions<IdentityOptions> optionsAccessor,
             IOptions<UserSessionOptions> userSessionOptions,
+            IOptions<JwtBearerOptions> jwtBearerOptions,
             IPasswordHasher<User> passwordHasher,
             IEnumerable<IUserValidator<User>> userValidators,
             IEnumerable<IPasswordValidator<User>> passwordValidators,
@@ -50,6 +54,7 @@ namespace Boilerplate.Extensions.Identity
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
             _httpContext = httpContextAccessor?.HttpContext ?? throw new ArgumentNullException(nameof(httpContextAccessor));
             _sessionOptions = userSessionOptions?.Value ?? throw new ArgumentNullException(nameof(userSessionOptions));
+            _jwtBearerOptions = jwtBearerOptions.Value ?? throw new ArgumentNullException(nameof(jwtBearerOptions));
         }
 
         public async Task<User?> FindByEmailOrPhoneNumberAsync(string emailOrPhoneNumber)
@@ -59,9 +64,27 @@ namespace Boilerplate.Extensions.Identity
             return user;
         }
 
+        async Task IUserManager.AddLoginAsync(User user, UserLoginInfo login)
+        {
+            var result = await AddLoginAsync(user, login);
+            if (!result.Succeeded) throw new IdentityException(result.Errors);
+        }
+
+        async Task IUserManager.RemoveLoginAsync(User user, UserLoginInfo login)
+        {
+            var result = await RemoveLoginAsync(user, login.LoginProvider, login.ProviderKey);
+            if (!result.Succeeded) throw new IdentityException(result.Errors);
+        }
+
         async Task IUserManager.CreateAsync(User user, string password)
         {
             var result = await CreateAsync(user, password);
+            if (!result.Succeeded) throw new IdentityException(result.Errors);
+        }
+
+        async Task IUserManager.CreateAsync(User user)
+        {
+            var result = await CreateAsync(user);
             if (!result.Succeeded) throw new IdentityException(result.Errors);
         }
 
@@ -183,6 +206,18 @@ namespace Boilerplate.Extensions.Identity
             return user;
         }
 
+        public async Task<User?> FindBySessionAsync(string refreshToken)
+        {
+            ThrowIfDisposed();
+
+            if (refreshToken == null)
+                throw new ArgumentNullException(nameof(refreshToken));
+
+            var refreshTokenHash = AlgorithmHelper.GenerateHash(refreshToken);
+            var session = await _dbContext.Set<UserSession>().Include(_ => _.User).FirstOrDefaultAsync(_ => _.RefreshTokenHash == refreshTokenHash);
+            return session?.User;
+        }
+
         public async Task<UserSessionInfo> GenerateSessionAsync(User user)
         {
             ThrowIfDisposed();
@@ -268,16 +303,17 @@ namespace Boilerplate.Extensions.Identity
             await _dbContext.SaveChangesAsync();
         }
 
-        public async Task<User?> FindBySessionAsync(string refreshToken)
+        private string? GetAudience(HttpContext context)
         {
-            ThrowIfDisposed();
+            string? audience = null;
 
-            if (refreshToken == null)
-                throw new ArgumentNullException(nameof(refreshToken));
+            audience ??= context.Request.Headers.Origin.FirstOrDefault()?.ToString();
+            audience = audience != null ? new Uri(audience, UriKind.Absolute).GetLeftPart(UriPartial.Authority) : audience;
 
-            var refreshTokenHash = AlgorithmHelper.GenerateHash(refreshToken);
-            var session = await _dbContext.Set<UserSession>().Include(_ => _.User).FirstOrDefaultAsync(_ => _.RefreshTokenHash == refreshTokenHash);
-            return session?.User;
+            audience ??= context.Request.Headers.Referer.FirstOrDefault()?.ToString();
+            audience = audience != null ? new Uri(audience, UriKind.Absolute).GetLeftPart(UriPartial.Authority) : audience;
+
+            return audience;
         }
 
         private string GenerateAccessToken(IEnumerable<Claim> claims, DateTimeOffset now)
@@ -285,12 +321,12 @@ namespace Boilerplate.Extensions.Identity
             if (claims == null)
                 throw new ArgumentNullException(nameof(claims));
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_sessionOptions.Secret));
+            var key = _jwtBearerOptions.TokenValidationParameters.IssuerSigningKey;
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
+            
             var token = new JwtSecurityToken(
-                issuer: _sessionOptions.Issuer,
-                audience: _sessionOptions.Audience,
+                issuer: _jwtBearerOptions.TokenValidationParameters.ValidIssuer,
+                audience: GetAudience(_httpContext),
                 claims: claims,
                 expires: now.UtcDateTime.Add(_sessionOptions.AccessTokenExpiresAfter), // Expiration time
                 signingCredentials: creds);
@@ -303,19 +339,19 @@ namespace Boilerplate.Extensions.Identity
         {
             var claims = new List<Claim>
             {
-                new(JwtRegisteredClaimNames.Jti, AlgorithmHelper.GenerateStamp(), ClaimValueTypes.String, _sessionOptions.Issuer),
-                new(JwtRegisteredClaimNames.Iss, _sessionOptions.Issuer, ClaimValueTypes.String, _sessionOptions.Issuer),
-                new(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64, _sessionOptions.Issuer),
+                new(JwtRegisteredClaimNames.Jti, AlgorithmHelper.GenerateStamp(), ClaimValueTypes.String, _jwtBearerOptions.TokenValidationParameters.ValidIssuer),
+                new(JwtRegisteredClaimNames.Iss, _jwtBearerOptions.TokenValidationParameters.ValidIssuer, ClaimValueTypes.String, _jwtBearerOptions.TokenValidationParameters.ValidIssuer),
+                new(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64, _jwtBearerOptions.TokenValidationParameters.ValidIssuer),
 
-                new(ClaimTypes.SerialNumber, AlgorithmHelper.GenerateStamp(), ClaimValueTypes.String, _sessionOptions.Issuer)
+                new(ClaimTypes.SerialNumber, AlgorithmHelper.GenerateStamp(), ClaimValueTypes.String, _jwtBearerOptions.TokenValidationParameters.ValidIssuer)
             };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_sessionOptions.Secret));
+            var key = _jwtBearerOptions.TokenValidationParameters.IssuerSigningKey;
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                issuer: _sessionOptions.Issuer,
-                audience: _sessionOptions.Audience,
+                issuer: _jwtBearerOptions.TokenValidationParameters.ValidIssuer,
+                audience: GetAudience(_httpContext),
                 claims: claims,
                 expires: now.UtcDateTime.Add(_sessionOptions.RefreshTokenExpiresAfter), // Expiration time
                 signingCredentials: creds);
@@ -349,8 +385,8 @@ namespace Boilerplate.Extensions.Identity
             var userId = await GetUserIdAsync(user);
 
             var claims = new List<Claim>();
-            claims.Add(new Claim(Options.ClaimsIdentity.UserIdClaimType, userId, ClaimValueTypes.String, _sessionOptions.Issuer));
-            claims.Add(new Claim(Options.ClaimsIdentity.SecurityStampClaimType, await GetSecurityStampAsync(user), ClaimValueTypes.String, _sessionOptions.Issuer));
+            claims.Add(new Claim(Options.ClaimsIdentity.UserIdClaimType, userId, ClaimValueTypes.String, _jwtBearerOptions.TokenValidationParameters.ValidIssuer));
+            claims.Add(new Claim(Options.ClaimsIdentity.SecurityStampClaimType, await GetSecurityStampAsync(user), ClaimValueTypes.String, _jwtBearerOptions.TokenValidationParameters.ValidIssuer));
             claims.AddRange(await GetClaimsAsync(user));
 
 
@@ -358,7 +394,7 @@ namespace Boilerplate.Extensions.Identity
 
             foreach (var roleName in roleNames)
             {
-                claims.Add(new Claim(Options.ClaimsIdentity.RoleClaimType, roleName, ClaimValueTypes.String, _sessionOptions.Issuer));
+                claims.Add(new Claim(Options.ClaimsIdentity.RoleClaimType, roleName, ClaimValueTypes.String, _jwtBearerOptions.TokenValidationParameters.ValidIssuer));
 
                 var role = await _roleManager.FindByNameAsync(roleName);
 
@@ -370,9 +406,9 @@ namespace Boilerplate.Extensions.Identity
 
             claims.AddRange(new Claim[]
             {
-                new(JwtRegisteredClaimNames.Jti, AlgorithmHelper.GenerateStamp(), ClaimValueTypes.String, _sessionOptions.Issuer),
-                new(JwtRegisteredClaimNames.Iss, _sessionOptions.Issuer, ClaimValueTypes.String, _sessionOptions.Issuer),
-                new(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64, _sessionOptions.Issuer),
+                new(JwtRegisteredClaimNames.Jti, AlgorithmHelper.GenerateStamp(), ClaimValueTypes.String, _jwtBearerOptions.TokenValidationParameters.ValidIssuer),
+                new(JwtRegisteredClaimNames.Iss, _jwtBearerOptions.TokenValidationParameters.ValidIssuer, ClaimValueTypes.String, _jwtBearerOptions.TokenValidationParameters.ValidIssuer),
+                new(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64, _jwtBearerOptions.TokenValidationParameters.ValidIssuer),
             });
 
             return claims;

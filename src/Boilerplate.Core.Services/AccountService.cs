@@ -17,6 +17,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -98,7 +99,7 @@ namespace Boilerplate.Core.Services
             if (form.Purpose == UsernameTokenPurpose.Change)
             {
                 var currentUser = await _userManager.GetCurrentAsync();
-                if (currentUser == null) throw new ProblemException("Failed to get current user.", 401);
+                if (currentUser == null) throw new ProblemException("Current account was not found", 401);
 
                 var existingUser = await _userManager.FindByEmailOrPhoneNumberAsync(form.Username);
 
@@ -188,7 +189,7 @@ namespace Boilerplate.Core.Services
             if (form.Purpose == UsernameTokenPurpose.Change)
             {
                 var currentUser = await _userManager.GetCurrentAsync();
-                if (currentUser == null) throw new ProblemException("Failed to get current user.", 401);
+                if (currentUser == null) throw new ProblemException("Current account was not found", 401);
 
 
                 var existingUser = await _userManager.FindByEmailOrPhoneNumberAsync(form.Username);
@@ -314,7 +315,7 @@ namespace Boilerplate.Core.Services
             if (!formValidation.IsValid) throw new ProblemException(formValidation.Errors);
 
             var currentUser = await _userManager.GetCurrentAsync();
-            if (currentUser == null) throw new ProblemException("Failed to get current user.", 401);
+            if (currentUser == null) throw new ProblemException("Current account was not found", 401);
 
             if (!await _userManager.CheckPasswordAsync(currentUser, form.CurrentPassword))
                 throw new ProblemException((() => form.CurrentPassword, $"'{nameof(form.CurrentPassword).Humanize()}' is not correct."));
@@ -340,7 +341,7 @@ namespace Boilerplate.Core.Services
             }
         }
 
-        public async Task<GenerateSessionModel> GenerateSessionAsync(GenerateSessionForm form)
+        public async Task<UserSessionModel> GenerateSessionAsync(GenerateSessionForm form)
         {
             if (form == null) throw new ArgumentNullException(nameof(form));
 
@@ -360,11 +361,45 @@ namespace Boilerplate.Core.Services
                 throw new ProblemException((() => form.Username, $"'{contact.Type.Humanize()}' is not verified."));
 
             var session = await _userManager.GenerateSessionAsync(user);
-            var model = _mapper.Map<GenerateSessionModel>(session);
+            var model = _mapper.Map<UserSessionModel>(session);
+            model = _mapper.Map(user, model);
             return model;
         }
 
-        public async Task<GenerateSessionModel> RefreshSessionAsync(RefreshSessionForm form)
+        public async Task<UserSessionModel> GenerateSessionAsync(GenerateExternalSessionForm form)
+        {
+            var username =
+                form.Principal.FindFirstValue(ClaimTypes.Email) ??
+                form.Principal.FindFirstValue(ClaimTypes.MobilePhone) ??
+                form.Principal.FindFirstValue(ClaimTypes.OtherPhone) ??
+                form.Principal.FindFirstValue(ClaimTypes.HomePhone);
+
+            if (username == null)
+                throw new ProblemException($"External account was not found.", 401);
+
+            var user = await _userManager.FindByEmailOrPhoneNumberAsync(username);
+
+            if (user == null)
+            {
+                var firstName = form.Principal.FindFirstValue(ClaimTypes.GivenName) ?? string.Empty;
+                var lastName = form.Principal.FindFirstValue(ClaimTypes.Surname) ?? string.Empty;
+
+                user = new User();
+                user.UserName = await _userManager.GenerateUserNameAsync(firstName, lastName);
+                await _userManager.CreateAsync(user);
+                await AddUserToDeservedRolesAsync(user);
+            }
+
+            await _userManager.RemoveLoginAsync(user, form.Login);
+            await _userManager.AddLoginAsync(user, form.Login);
+
+            var session = await _userManager.GenerateSessionAsync(user);
+            var model = _mapper.Map<UserSessionModel>(session);
+            model = _mapper.Map(user, model);
+            return model;
+        }
+
+        public async Task<UserSessionModel> RefreshSessionAsync(RefreshSessionForm form)
         {
             if (form == null) throw new ArgumentNullException(nameof(form));
 
@@ -375,7 +410,8 @@ namespace Boilerplate.Core.Services
             if (user == null) throw new ProblemException((() => form.RefreshToken, $"'{nameof(form.RefreshToken).Humanize()}' is not associated to any user."));
 
             var session = await _userManager.GenerateSessionAsync(user);
-            var model = _mapper.Map<GenerateSessionModel>(session);
+            var model = _mapper.Map<UserSessionModel>(session);
+            model = _mapper.Map(user, model);
             return model;
         }
 
@@ -408,9 +444,11 @@ namespace Boilerplate.Core.Services
 
         Task ChangePasswordAsync(ChangePasswordForm form);
 
-        Task<GenerateSessionModel> GenerateSessionAsync(GenerateSessionForm form);
+        Task<UserSessionModel> GenerateSessionAsync(GenerateSessionForm form);
 
-        Task<GenerateSessionModel> RefreshSessionAsync(RefreshSessionForm form);
+        Task<UserSessionModel> GenerateSessionAsync(GenerateExternalSessionForm form);
+
+        Task<UserSessionModel> RefreshSessionAsync(RefreshSessionForm form);
 
         Task RevokeSessionAsync(RevokeSessionForm form);
     }

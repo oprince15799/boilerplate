@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Boilerplate.Core.Entities;
 using Boilerplate.Core.Extensions.Identity;
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Boilerplate.Core.Forms.Accounts
 {
-    public class GenerateSessionModel
+    public class UserSessionModel
     {
         public string AccessToken { get; set; } = default!;
 
@@ -17,11 +18,12 @@ namespace Boilerplate.Core.Forms.Accounts
         public string TokenType { get; set; } = default!;
     }
 
-    public class GenerateSessionProfile : Profile
+    public class UserSessionProfile : Profile
     {
-        public GenerateSessionProfile()
+        public UserSessionProfile()
         {
-            CreateMap<UserSessionInfo, GenerateSessionModel>();
+            CreateMap<UserSessionInfo, UserSessionModel>();
+            CreateMap<User, UserSessionModel>();
         }
     }
 }
